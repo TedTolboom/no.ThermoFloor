@@ -159,9 +159,19 @@ module.exports = new ZwaveDriver(path.basename(__dirname), {
 		thermofloor_onoff: {
 			command_class: 'COMMAND_CLASS_BASIC',
 			command_report: 'BASIC_SET',
-			command_report_parser: report => {
-				module.exports._debug('ONOFF REPORT - Thermostat state changed to:', report.Value === 255);
-				return report.Value === 255;
+			command_report_parser: (report, node) => {
+				const active = report.Value === 255;
+				module.exports._debug('ONOFF REPORT - Thermostat state changed to:', active);
+
+                if (node && active !== node.state.active) {
+                    node.state.active = active;
+                    module.exports._debug('ONOFF REPORT: Triggering flows');
+                    Homey.manager('flow').triggerDevice('thermofloor_state_changed', {
+                        active: active
+                    }, null, node.device_data);
+                }
+
+				return active;
 			},
 		},
 		thermofloor_mode: {
